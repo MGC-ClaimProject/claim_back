@@ -74,7 +74,13 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 # 모든 Origin 허용 (개발용)
-CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS",]
+CORS_ALLOW_METHODS = [
+    "GET",
+    "POST",
+    "PUT",
+    "DELETE",
+    "OPTIONS",
+]
 CORS_ALLOW_HEADERS = [
     "Authorization",
     "Content-Type",
@@ -192,7 +198,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 
 # 카카오 oauth
-KAKAO_FRONT_CALLBACK_URL ="http://localhost:5173/login/callback"
+KAKAO_FRONT_CALLBACK_URL = "http://localhost:5173/login/callback"
 KAKAO_CALLBACK_URL = "http://localhost:8000/api/v1/users/login/kakao/callback/"  # 카카오 콜백 URL, 카카오 인증후 리디렉션될 URL
 KAKAO_LOGIN_URL = "https://kauth.kakao.com/oauth/authorize"  # 카카오 로그인 URL, 카카오 로그인 요청 URL,인증페이지로 이동
 KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token"  # 카카오 액세스 토큰 URL, 인증코드로 액세스토큰을 교환하는 URL,리프레쉬?

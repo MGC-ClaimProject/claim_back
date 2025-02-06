@@ -1,23 +1,27 @@
+import logging
+
 import requests
+from common.exceptions import UnauthorizedException
+from common.logging_config import logger
 from django.conf import settings
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
-from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.token_blacklist.models import (BlacklistedToken,
+                                                             OutstandingToken)
+from rest_framework_simplejwt.tokens import RefreshToken
 from users.models import User
 from users.serializers.user_serializers import UserSerializer
-from common.exceptions import UnauthorizedException
-from common.logging_config import logger
-from drf_spectacular.utils import extend_schema
-import logging
 
 logger = logging.getLogger("custom_api_logger")
 
+
 class KakaoLoginCallbackView(APIView):
     """카카오에서 받은 인가 코드로 로그인 처리"""
+
     permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
@@ -33,7 +37,9 @@ class KakaoLoginCallbackView(APIView):
     def handle_kakao_login(self, code):
         """✅ 카카오 로그인 처리 공통 함수"""
         if not code:
-            return Response({"detail": "인가 코드가 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "인가 코드가 없습니다."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             logger.debug(f"카카오 로그인 요청 - 받은 코드: {code}")
@@ -76,7 +82,10 @@ class KakaoLoginCallbackView(APIView):
 
         except Exception as e:
             logger.error(f"카카오 로그인 처리 중 오류 발생: {str(e)}")
-            return Response({"detail": "카카오 로그인 처리 중 오류 발생", "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": "카카오 로그인 처리 중 오류 발생", "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def _get_kakao_access_token(self, code):
         """✅ 카카오에서 액세스 토큰 요청"""
@@ -100,7 +109,10 @@ class KakaoLoginCallbackView(APIView):
     def _get_kakao_user_info(self, access_token):
         """✅ 카카오에서 사용자 정보 가져오기"""
         user_info_url = "https://kapi.kakao.com/v2/user/me"
-        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
 
         response = requests.get(user_info_url, headers=headers)
 
@@ -112,15 +124,17 @@ class KakaoLoginCallbackView(APIView):
         return {"email": kakao_account.get("email")}
 
 
-
 class RefreshAccessTokenAPIView(APIView):
     """리프레시 토큰을 이용한 Access Token 갱신 API View"""
+
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get("refresh_token")
         if not refresh_token:
-            raise UnauthorizedException("리프레시 토큰이 누락되었습니다.", code="MISSING_REFRESH_TOKEN")
+            raise UnauthorizedException(
+                "리프레시 토큰이 누락되었습니다.", code="MISSING_REFRESH_TOKEN"
+            )
 
         try:
             refresh = RefreshToken(refresh_token)
@@ -139,11 +153,14 @@ class RefreshAccessTokenAPIView(APIView):
 
         except (User.DoesNotExist, TokenError):
             logger.error("리프레시 토큰이 유효하지 않음.")
-            raise UnauthorizedException("유효하지 않은 리프레시 토큰입니다.", code="INVALID_REFRESH_TOKEN")
+            raise UnauthorizedException(
+                "유효하지 않은 리프레시 토큰입니다.", code="INVALID_REFRESH_TOKEN"
+            )
 
 
 class LogoutView(APIView):
     """사용자 로그아웃 처리 View"""
+
     permission_classes = [AllowAny]
 
     @extend_schema(
@@ -154,22 +171,32 @@ class LogoutView(APIView):
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get("refresh_token")
         if not refresh_token:
-            raise UnauthorizedException("리프레시 토큰이 누락되었습니다.", code="MISSING_REFRESH_TOKEN")
+            raise UnauthorizedException(
+                "리프레시 토큰이 누락되었습니다.", code="MISSING_REFRESH_TOKEN"
+            )
 
         try:
             token = RefreshToken(refresh_token)
 
-            outstanding_token = OutstandingToken.objects.filter(jti=token["jti"]).first()
+            outstanding_token = OutstandingToken.objects.filter(
+                jti=token["jti"]
+            ).first()
             if outstanding_token:
                 BlacklistedToken.objects.get_or_create(token=outstanding_token)
                 outstanding_token.delete()
             else:
-                logger.warning("해당 리프레시 토큰을 OutstandingToken에서 찾을 수 없습니다.")
+                logger.warning(
+                    "해당 리프레시 토큰을 OutstandingToken에서 찾을 수 없습니다."
+                )
 
         except TokenError:
             logger.error("리프레시 토큰 블랙리스트 처리 중 오류 발생")
-            raise UnauthorizedException("유효하지 않은 리프레시 토큰입니다.", code="INVALID_REFRESH_TOKEN")
+            raise UnauthorizedException(
+                "유효하지 않은 리프레시 토큰입니다.", code="INVALID_REFRESH_TOKEN"
+            )
 
-        response = Response({"detail": "로그아웃에 성공했습니다."}, status=status.HTTP_200_OK)
+        response = Response(
+            {"detail": "로그아웃에 성공했습니다."}, status=status.HTTP_200_OK
+        )
         response.delete_cookie("refresh_token")
         return response
