@@ -10,6 +10,12 @@ ALLOWED_HOSTS = [
     # "default-oz-collabo-servi-18d66-100596032-ce8f2faf2e3d.kr.lb.naverncp.com",
     "*",
 ]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+]
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -49,6 +55,7 @@ THIRD_PARTY_APPS = [
 
 INSTALLED_APPS = DJANGO_APPS + CUSTOM_APPS + THIRD_PARTY_APPS
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # CORS 미들웨어 추가
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -59,12 +66,25 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOW_CREDENTIALS = True
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",  # React 개발 서버 주소
-# ]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+]
 
 # 모든 Origin 허용 (개발용)
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS",]
+CORS_ALLOW_HEADERS = [
+    "Authorization",
+    "Content-Type",
+]
+CORS_ALLOW_ALL_ORIGINS = False
+SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = False  # ✅ HTTPS 환경이 아닐 경우 False
+CSRF_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SECURE = False  # HTTPS 환경에서는 True
+
 
 ROOT_URLCONF = "config.urls"
 
@@ -172,8 +192,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 
 # 카카오 oauth
+KAKAO_FRONT_CALLBACK_URL ="http://localhost:5173/login/callback"
 KAKAO_CALLBACK_URL = "http://localhost:8000/api/v1/users/login/kakao/callback/"  # 카카오 콜백 URL, 카카오 인증후 리디렉션될 URL
 KAKAO_LOGIN_URL = "https://kauth.kakao.com/oauth/authorize"  # 카카오 로그인 URL, 카카오 로그인 요청 URL,인증페이지로 이동
 KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token"  # 카카오 액세스 토큰 URL, 인증코드로 액세스토큰을 교환하는 URL,리프레쉬?
 KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me"  # 카카오 사용자 정보 URL, 카카오 사용자 정보를 가져오기 위한 URL
 KAKAO_ACCESS_TOKEN_INFO_URL = "https://kapi.kakao.com/v1/user/access_token_info"  # 액세스 토큰 정보 확인 URL, 발급된 액세스 토큰의 유효성을 확인하기 위한 URL
+FRONTEND_LOGIN_REDIRECT_URL = "http://localhost:5173/login-success"
