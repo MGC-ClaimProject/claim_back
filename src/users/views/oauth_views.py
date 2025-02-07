@@ -19,15 +19,16 @@ from users.serializers.user_serializers import UserSerializer
 logger = logging.getLogger("custom_api_logger")
 
 
+@extend_schema(tags=["Oauth"])
 class KakaoLoginCallbackView(APIView):
     """카카오에서 받은 인가 코드로 로그인 처리"""
 
     permission_classes = [AllowAny]
 
-    def get(self, request, *args, **kwargs):
-        """✅ GET 요청으로 받은 인가 코드 처리"""
-        code = request.GET.get("code")
-        return self.handle_kakao_login(code)
+    # def get(self, request, *args, **kwargs):
+    #     """✅ GET 요청으로 받은 인가 코드 처리"""
+    #     code = request.GET.get("code")
+    #     return self.handle_kakao_login(code)
 
     def post(self, request, *args, **kwargs):
         """✅ POST 요청으로 받은 인가 코드 처리"""
@@ -54,12 +55,17 @@ class KakaoLoginCallbackView(APIView):
             # ✅ 3. 유저 확인 및 생성
             user, created = User.objects.get_or_create(email=email)
 
-            # ✅ 4. JWT 토큰 생성
+            # ✅ 4. 유저를 활성화 (`is_active = True`)
+            if not user.is_active:
+                user.is_active = True
+                user.save()
+
+            # ✅ 5. JWT 토큰 생성
             refresh = RefreshToken.for_user(user)
             access_token = str(refresh.access_token)
             refresh_token = str(refresh)
 
-            # ✅ 5. 응답 데이터 구성
+            # ✅ 6. 응답 데이터 구성
             response_data = {
                 "access_token": access_token,
                 "user": UserSerializer(user).data,
@@ -124,6 +130,7 @@ class KakaoLoginCallbackView(APIView):
         return {"email": kakao_account.get("email")}
 
 
+@extend_schema(tags=["Oauth"])
 class RefreshAccessTokenAPIView(APIView):
     """리프레시 토큰을 이용한 Access Token 갱신 API View"""
 

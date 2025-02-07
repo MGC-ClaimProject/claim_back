@@ -10,6 +10,7 @@ GENDER_CHOICES = [("Male", "남성"), ("Female", "여성")]
 
 
 RELATION_CHOICES = [
+    ("Self", "본인"),
     ("Parant", "부모"),
     ("Spouse", "배우자"),
     ("Child", "자녀"),
