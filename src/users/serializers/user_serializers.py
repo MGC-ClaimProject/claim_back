@@ -13,12 +13,3 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active",
         ]
         read_only_fields = ("id", "email")
-
-
-class MyInfoSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Member
-        fields = ["user", "id", "name", "phone", "birth", "gender"]
-        read_only_fields = ("id",)

@@ -25,7 +25,8 @@ base_url = "api/v1"
 
 urlpatterns = [
     path(f"{base_url}/admin/", admin.site.urls),
-    path(f"{base_url}/users/", include("users.urls")),
+    path(f"{base_url}/user/", include("users.urls.user_urls")),
+    path(f"{base_url}/users/", include("users.urls.users_urls")),
     path(f"{base_url}/members/", include("members.urls")),
     path(f"{base_url}/insurances/", include("insurances.urls")),
     path(f"{base_url}/claims/", include("claims.urls")),

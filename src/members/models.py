@@ -1,8 +1,16 @@
 from common.constants.choices import GENDER_CHOICES, RELATION_CHOICES
 from django.db import models
+from users.models import User
 
 
 class Member(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,  # 유저 삭제 시 멤버도 삭제됨
+        related_name="members",  # ✅ `user.members.all()`로 접근 가능
+        null=True,  # ✅ 기존 데이터와 호환성 유지 (기존 멤버에는 user가 없을 수 있음)
+        blank=True,
+    )
     name = models.CharField(max_length=30, verbose_name="이름")
     phone = models.CharField(max_length=30, verbose_name="전화번호")
     birth = models.DateField(verbose_name="생년월일")
@@ -12,6 +20,7 @@ class Member(models.Model):
     relation = models.CharField(
         max_length=30, choices=RELATION_CHOICES, verbose_name="관계"
     )
+    is_ad_agreed = models.BooleanField(default=False, verbose_name="광고성 정보 동의")  # ✅ 선택 동의 필드 추가
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="수정일")
 

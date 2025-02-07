@@ -12,7 +12,6 @@ SECRET_KEY = ENV.get(
     "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()?", k=50)),
 )
 
-ALLOWED_HOSTS = []
 
 # Database
 DATABASES = {

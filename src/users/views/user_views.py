@@ -3,51 +3,45 @@ from members.models import Member
 from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
-from users.serializers.user_serializers import MyInfoSerializer
+from users.models import User
+from users.serializers.user_serializers import UserSerializer
 
 
-@extend_schema(tags=["Users"])
+@extend_schema(tags=["User"])
 @extend_schema_view(
     get=extend_schema(
         summary="내 정보 조회",
-        description="로그인한 사용자의 멤버 ID 1번 정보를 조회합니다.",
-        responses={200: MyInfoSerializer},
+        description="로그인한 사용자의 정보를 조회합니다.",
+        responses={200: UserSerializer},
     ),
     put=extend_schema(
         summary="내 정보 전체 업데이트",
-        description="로그인한 사용자의 멤버 정보를 전체적으로 업데이트합니다. 모든 필드를 보내야 합니다.",
-        request=MyInfoSerializer,
-        responses={200: MyInfoSerializer},
+        description="로그인한 사용자의 정보를 전체적으로 업데이트합니다. 모든 필드를 보내야 합니다.",
+        request=UserSerializer,
+        responses={200: UserSerializer},
     ),
     patch=extend_schema(
         summary="내 정보 부분 업데이트",
-        description="로그인한 사용자의 멤버 정보를 부분적으로 업데이트합니다. 필요한 필드만 보낼 수 있습니다.",
-        request=MyInfoSerializer,
-        responses={200: MyInfoSerializer},
+        description="로그인한 사용자의 정보를 부분적으로 업데이트합니다. 필요한 필드만 보낼 수 있습니다.",
+        request=UserSerializer,
+        responses={200: UserSerializer},
     ),
 )
-class MyInfoAPIView(RetrieveUpdateAPIView):
-    queryset = Member.objects.all()
-    serializer_class = MyInfoSerializer
-    # permission_classes = [IsAuthenticated]  # 로그인된 사용자만 접근 가능
-    permission_classes = [AllowAny]
+class UserAPIView(RetrieveUpdateAPIView):
+    """로그인한 유저 정보를 반환하는 API"""
 
-    # 나의 정보는 로그인 유저의 가족멤버의 1번으로 고정되어있음.
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]  # ✅ 로그인한 사용자만 접근 가능
+
     def get_object(self):
-        return self.queryset.get(user=self.request.user).first()
+        """로그인한 사용자 정보 반환"""
+        return self.request.user  # ✅ `user` 필드가 없으므로 직접 반환
 
 
-@extend_schema(tags=["Users"])
-@extend_schema_view(
-    patch=extend_schema(
-        summary="회원 탈퇴 요청",
-        description="로그인한 사용자의 멤버 ID 1번 정보를 비활성화(탈퇴 처리)합니다.",
-        request=None,  # 요청 바디가 필요 없는 경우 None으로 설정
-        responses={200: {"type": "string", "example": "멤버가 비활성화되었습니다."}},
-    )
-)
 # 회원탈퇴 요청시 사용하는 api
-class MyInfoDeactivateAPIView(APIView):
+@extend_schema(tags=["User"])
+class UserDeactivateAPIView(APIView):
     # permission_classes = [IsAuthenticated]  # 로그인된 사용자만 접근 가능
     permission_classes = [AllowAny]
 

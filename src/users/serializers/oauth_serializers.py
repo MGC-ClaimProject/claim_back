@@ -101,7 +101,6 @@ class SocialLoginSerializer(serializers.Serializer):
             )
         return value
 
-    # 유저 생성 및 is_active 업데이트
     def save(self, **kwargs):
         """
         사용자 생성 또는 업데이트
@@ -111,16 +110,12 @@ class SocialLoginSerializer(serializers.Serializer):
         email = validated_data["email"]
 
         # 이메일을 기준으로 사용자 검색
-        user = User.objects.filter(email=email).first()
+        user, created = User.objects.get_or_create(email=email)
 
-        if user:
-            # 기존 사용자 업데이트
-            user.is_active = True  # 활성화 상태 설정
-        else:
-            # 새로운 사용자 생성
-            user = User(email=email)
-
-        user.save()
+        # ✅ 로그인 성공 시 `is_active = True`로 설정
+        if not user.is_active:
+            user.is_active = True
+            user.save()
 
         # 기존 리프레시 토큰 블랙리스트 처리
         self._blacklist_existing_refresh_tokens(user)

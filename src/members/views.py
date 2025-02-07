@@ -4,15 +4,11 @@ from members.serializers import MemberSerializer, SecuritySerializer
 from rest_framework.generics import (CreateAPIView, ListCreateAPIView,
                                      RetrieveUpdateDestroyAPIView)
 from rest_framework.permissions import AllowAny, IsAuthenticated
-
+from rest_framework.response import Response
+from rest_framework import status
 
 @extend_schema(tags=["Members"])
 @extend_schema_view(
-    get=extend_schema(
-        summary="멤버 목록 조회",
-        description="로그인한 사용자의 모든 멤버를 반환합니다.",
-        responses={200: MemberSerializer(many=True)},  # 여러 개의 멤버 반환
-    ),
     post=extend_schema(
         summary="새 멤버 추가",
         description="로그인한 사용자의 멤버를 추가합니다.",
@@ -22,27 +18,28 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 )
 class MemberListView(ListCreateAPIView):
     serializer_class = MemberSerializer
-    # permission_classes = (IsAuthenticated,)
-    permission_classes = (AllowAny,)
+    permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
-        """
-        로그인한 사용자의 멤버들만 반환
-        """
+        """로그인한 사용자의 멤버들만 반환"""
         return Member.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        """
-        멤버 생성 시 로그인한 사용자와 연결
-        """
+        """멤버 생성 시 로그인한 사용자와 연결"""
         serializer.save(user=self.request.user)
 
-    def perform_create(self, serializer):
-        """
-        멤버 생성 시 로그인한 사용자와 연결
-        """
-        serializer.save(user=self.request.user)
+    def create(self, request, *args, **kwargs):
+        """회원가입 후 멤버 추가 요청"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
 
+        # ✅ 응답을 직접 구성하여 회원가입 완료 후 프론트로 전달
+        response_data = {
+            "message": "회원가입이 완료되었습니다.",
+            "member": serializer.data,
+        }
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 @extend_schema(tags=["Members"])
 @extend_schema_view(
