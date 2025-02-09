@@ -1,6 +1,5 @@
+
 from django.urls import path
-from users.views.oauth_views import (KakaoLoginCallbackView, LogoutView,
-                                     RefreshAccessTokenAPIView)
 from users.views.user_views import UserAPIView, UserDeactivateAPIView
 
 app_name = "user"

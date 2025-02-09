@@ -9,6 +9,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from users.models import User
 
 
+import requests
+from django.conf import settings
+from users.serializers.user_serializers import UserSerializer
+
+
+
 class AccessTokenSerializer(serializers.Serializer):
     """
     Access Token 생성 Serializer.
@@ -88,7 +94,6 @@ class RefreshTokenSerializer(serializers.Serializer):
                 logger.error(f"리프레시 토큰 블랙리스트 처리 중 오류 발생: {str(e)}")
         outstanding_tokens.delete()
 
-
 class SocialLoginSerializer(serializers.Serializer):
     """소셜 로그인 공통 시리얼라이저"""
 
@@ -133,3 +138,119 @@ class SocialLoginSerializer(serializers.Serializer):
             except Exception as e:
                 logger.error(f"토큰 블랙리스트 처리 중 오류 발생: {str(e)}")
         outstanding_tokens.delete()
+
+
+
+
+class KakaoAuthCodeSerializer(serializers.Serializer):
+    """✅ 카카오 로그인 인가 코드 요청을 처리하는 Serializer"""
+
+    code = serializers.CharField(required=True, help_text="카카오 인가 코드")
+
+    def validate_code(self, value):
+        """
+        ✅ 카카오 인가 코드 유효성 검증
+        """
+        if not value:
+            raise BadRequestException("인가 코드가 없습니다.", code="MISSING_AUTH_CODE")
+        return value
+
+    def exchange_code_for_access_token(self, code):
+        """
+        ✅ 카카오 인가 코드를 사용하여 액세스 토큰 요청
+        """
+        token_url = "https://kauth.kakao.com/oauth/token"
+        payload = {
+            "grant_type": "authorization_code",
+            "client_id": settings.KAKAO_CLIENT_ID,
+            "redirect_uri": settings.KAKAO_CALLBACK_URL,
+            "code": code,
+        }
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+
+        response = requests.post(token_url, data=payload, headers=headers)
+        data = response.json()
+
+        if "access_token" not in data:
+            raise BadRequestException("카카오 액세스 토큰 요청 실패", code="KAKAO_TOKEN_ERROR")
+
+        return data["access_token"]
+
+    def get_kakao_user_info(self, access_token):
+        """
+        ✅ 카카오 API에서 사용자 정보 가져오기
+        """
+        user_info_url = "https://kapi.kakao.com/v2/user/me"
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+        response = requests.get(user_info_url, headers=headers)
+        user_data = response.json()
+
+        kakao_id = user_data.get("id")
+        email = user_data.get("kakao_account", {}).get("email", None)
+
+        if not kakao_id:
+            raise BadRequestException("카카오 사용자 정보를 가져올 수 없습니다.", code="KAKAO_USER_INFO_ERROR")
+
+        return kakao_id, email
+
+    def get_or_create_user(self, kakao_id, email):
+        """
+        ✅ 기존 유저 확인 및 생성
+        """
+        # ✅ 1. social_kakao_id가 있는 유저 확인
+        user = User.objects.filter(social_kakao_id=kakao_id).first()
+        if user:
+            return user  # ✅ 기존 계정 사용
+
+        # ✅ 2. 기존 이메일이 있는 유저 확인 후 social_kakao_id 업데이트
+        user = User.objects.filter(email=email).first()
+        if user:
+            user.social_kakao_id = kakao_id
+            user.save()
+            return user
+
+        # ✅ 3. 새로운 유저 생성
+        user = User.objects.create(
+            email=email,
+            social_kakao_id=kakao_id,
+            is_active=True  # 기본 활성화
+        )
+        return user
+
+    def create_tokens(self, user):
+        """
+        ✅ JWT 토큰 발급
+        """
+        refresh = RefreshToken.for_user(user)
+        return {
+            "refresh_token": str(refresh),
+            "access_token": str(refresh.access_token),
+        }
+
+    def save(self, **kwargs):
+        """
+        ✅ 카카오 로그인 전체 프로세스 수행
+        """
+        code = self.validated_data["code"]
+
+        # 1️⃣ 액세스 토큰 발급
+        access_token = self.exchange_code_for_access_token(code)
+
+        # 2️⃣ 사용자 정보 가져오기
+        kakao_id, email = self.get_kakao_user_info(access_token)
+
+        # 3️⃣ 기존 사용자 조회 및 생성
+        user = self.get_or_create_user(kakao_id, email)
+
+        # 4️⃣ JWT 토큰 발급
+        tokens = self.create_tokens(user)
+
+        from users.serializers.user_serializers import UserSerializer
+        return {
+            "access_token": tokens["access_token"],
+            "refresh_token": tokens["refresh_token"],
+            "user": UserSerializer(user).data,
+        }

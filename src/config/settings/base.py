@@ -47,10 +47,10 @@ CUSTOM_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
+    "corsheaders",
     "rest_framework",
     "drf_spectacular",
     "rest_framework_simplejwt.token_blacklist",
-    "corsheaders",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + CUSTOM_APPS + THIRD_PARTY_APPS
@@ -85,11 +85,21 @@ CORS_ALLOW_HEADERS = [
     "Authorization",
     "Content-Type",
 ]
-CORS_ALLOW_ALL_ORIGINS = False
-SESSION_COOKIE_SAMESITE = "None"
-SESSION_COOKIE_SECURE = False  # ✅ HTTPS 환경이 아닐 경우 False
+CORS_ALLOW_ALL_ORIGINS = True
+
+# settings.py
+SESSION_ENGINE = "django.contrib.sessions.backends.db"  # ✅ 데이터베이스 기반 세션
+SESSION_COOKIE_SECURE = False  # ✅ HTTPS가 아닌 환경에서 세션 유지 가능하도록 설정 (로컬 개발 시)
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"  # ✅ 프론트엔드와 백엔드 간 쿠키 유지
+
+
+
+
 CSRF_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SECURE = False  # HTTPS 환경에서는 True
+
+
 
 
 ROOT_URLCONF = "config.urls"
@@ -205,3 +215,4 @@ KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token"  # 카카오 액세스 �
 KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me"  # 카카오 사용자 정보 URL, 카카오 사용자 정보를 가져오기 위한 URL
 KAKAO_ACCESS_TOKEN_INFO_URL = "https://kapi.kakao.com/v1/user/access_token_info"  # 액세스 토큰 정보 확인 URL, 발급된 액세스 토큰의 유효성을 확인하기 위한 URL
 FRONTEND_LOGIN_REDIRECT_URL = "http://localhost:5173/login-success"
+FRONTEND_BASE_URL = "http://localhost:5173"
