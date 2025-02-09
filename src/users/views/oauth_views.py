@@ -1,9 +1,8 @@
 import logging
-
 import requests
+from django.shortcuts import redirect
 from common.exceptions import UnauthorizedException
 from common.logging_config import logger
-from django.conf import settings
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -12,122 +11,110 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.token_blacklist.models import (BlacklistedToken,
                                                              OutstandingToken)
+from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
 from users.models import User
 from users.serializers.user_serializers import UserSerializer
 
 logger = logging.getLogger("custom_api_logger")
 
-
-@extend_schema(tags=["Oauth"])
 class KakaoLoginCallbackView(APIView):
-    """카카오에서 받은 인가 코드로 로그인 처리"""
-
+    """✅ 카카오 로그인 콜백 API"""
     permission_classes = [AllowAny]
-
-    # def get(self, request, *args, **kwargs):
-    #     """✅ GET 요청으로 받은 인가 코드 처리"""
-    #     code = request.GET.get("code")
-    #     return self.handle_kakao_login(code)
+    def get(self, request, *args, **kwargs):
+        code = request.GET.get('code')
+        frontend_url = f"http://localhost:5173?code={code}"
+        return redirect(frontend_url)
 
     def post(self, request, *args, **kwargs):
-        """✅ POST 요청으로 받은 인가 코드 처리"""
+        """✅ 프론트에서 받은 인가 코드로 카카오에 액세스 토큰 요청"""
         code = request.data.get("code")
-        return self.handle_kakao_login(code)
-
-    def handle_kakao_login(self, code):
-        """✅ 카카오 로그인 처리 공통 함수"""
+        logger.info(f"code: {code}")
         if not code:
-            return Response(
-                {"detail": "인가 코드가 없습니다."}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"detail": "인가 코드가 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            logger.debug(f"카카오 로그인 요청 - 받은 코드: {code}")
+        # ✅ 카카오에서 액세스 토큰 요청
+        access_token = self._get_kakao_access_token(code)
+        if not access_token:
+            return Response({"detail": "카카오 액세스 토큰 요청 실패"}, status=status.HTTP_400_BAD_REQUEST)
 
-            # ✅ 1. 카카오에서 액세스 토큰 요청
-            kakao_access_token = self._get_kakao_access_token(code)
+        # ✅ 액세스 토큰을 이용해 사용자 정보 가져오기
+        user = self._get_or_create_user(access_token)
 
-            # ✅ 2. 카카오에서 사용자 정보 가져오기
-            user_info = self._get_kakao_user_info(kakao_access_token)
-            email = user_info.get("email")
+        # ✅ JWT 토큰 발급
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
 
-            # ✅ 3. 유저 확인 및 생성
-            user, created = User.objects.get_or_create(email=email)
+        # ✅ 응답 객체 생성
+        response = Response({
+            "access_token": access_token,
+            "user": UserSerializer(user).data
+        }, status=status.HTTP_200_OK)
 
-            # ✅ 4. 유저를 활성화 (`is_active = True`)
-            if not user.is_active:
-                user.is_active = True
-                user.save()
+        # ✅ 리프레시 토큰을 HttpOnly 쿠키로 설정
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,  # JavaScript에서 접근 불가 (보안 강화)
+            secure=True,  # HTTPS에서만 전송 (로컬 개발 시 False)
+            samesite="Lax",  # CORS 보안 설정
+            max_age=7 * 24 * 60 * 60,  # 7일간 유효
+        )
 
-            # ✅ 5. JWT 토큰 생성
-            refresh = RefreshToken.for_user(user)
-            access_token = str(refresh.access_token)
-            refresh_token = str(refresh)
-
-            # ✅ 6. 응답 데이터 구성
-            response_data = {
-                "access_token": access_token,
-                "user": UserSerializer(user).data,
-            }
-
-            response = Response(response_data, status=201 if created else 200)
-
-            # ✅ 리프레시 토큰을 `Set-Cookie` 헤더에 포함
-            response.set_cookie(
-                key="refresh_token",
-                value=refresh_token,
-                httponly=True,
-                secure=False,
-                samesite="Lax",
-                max_age=7 * 24 * 60 * 60,
-                path="/",
-            )
-
-            return response  # ✅ `POST` 방식으로 응답
-
-        except Exception as e:
-            logger.error(f"카카오 로그인 처리 중 오류 발생: {str(e)}")
-            return Response(
-                {"detail": "카카오 로그인 처리 중 오류 발생", "error": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        return response
 
     def _get_kakao_access_token(self, code):
-        """✅ 카카오에서 액세스 토큰 요청"""
+        """✅ 카카오 API에서 액세스 토큰 요청"""
         token_url = "https://kauth.kakao.com/oauth/token"
         payload = {
             "grant_type": "authorization_code",
-            "code": code,
             "client_id": settings.KAKAO_CLIENT_ID,
-            "redirect_uri": settings.KAKAO_CALLBACK_URL,
+            "redirect_uri": settings.KAKAO_CALLBACK_URL,  # ✅ 백엔드 주소 사용
+            "code": code,
         }
 
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         response = requests.post(token_url, data=payload, headers=headers)
+        data = response.json()
 
-        if response.status_code != 200:
-            logger.error(f"카카오 액세스 토큰 요청 실패: {response.json()}")
-            return None
+        return data.get("access_token")
 
-        return response.json().get("access_token")
-
-    def _get_kakao_user_info(self, access_token):
-        """✅ 카카오에서 사용자 정보 가져오기"""
+    def _get_or_create_user(self, access_token):
+        """✅ 카카오 API에서 사용자 정보 가져와 유저 생성 또는 조회"""
         user_info_url = "https://kapi.kakao.com/v2/user/me"
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
-
         response = requests.get(user_info_url, headers=headers)
+        user_data = response.json()
 
-        if response.status_code != 200:
-            raise Exception("카카오에서 사용자 정보를 가져오는 데 실패했습니다.")
+        kakao_id = user_data.get("id")
+        email = user_data.get("kakao_account", {}).get("email", None)
 
-        data = response.json()
-        kakao_account = data.get("kakao_account", {})
-        return {"email": kakao_account.get("email")}
+        if not kakao_id:
+            raise ValueError("카카오 사용자 정보를 가져올 수 없습니다.")
+
+        # ✅ 기존 social_kakao_id가 있는 유저 확인
+        user = User.objects.filter(social_kakao_id=kakao_id).first()
+        if user:
+            return user
+
+        # ✅ 기존 이메일이 있는 유저 확인 후 social_kakao_id 업데이트
+        user = User.objects.filter(email=email).first()
+        if user:
+            user.social_kakao_id = kakao_id
+            user.save()
+            return user
+
+        # ✅ 새로운 유저 생성
+        user = User.objects.create(
+            email=email,
+            social_kakao_id=kakao_id,
+            is_active=True  # 기본 활성화
+        )
+        return user
 
 
 @extend_schema(tags=["Oauth"])
