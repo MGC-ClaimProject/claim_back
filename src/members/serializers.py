@@ -14,6 +14,7 @@ class MemberSerializer(serializers.ModelSerializer):
         read_only_fields = ("id","user")
 
 
+
 class SecuritySerializer(serializers.ModelSerializer):
     class Meta:
         model = Security

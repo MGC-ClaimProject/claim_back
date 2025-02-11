@@ -13,49 +13,61 @@ from rest_framework_simplejwt.token_blacklist.models import (BlacklistedToken,
                                                              OutstandingToken)
 from django.conf import settings
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from members.models import Member
 from users.models import User
-from users.serializers.user_serializers import UserSerializer
+from users.serializers.oauth_serializers import SocialLoginSerializer, KakaoAuthCodeSerializer
+
 
 logger = logging.getLogger("custom_api_logger")
 
+@extend_schema(tags=["Oauth"])
 class KakaoLoginCallbackView(APIView):
     """✅ 카카오 로그인 콜백 API"""
     permission_classes = [AllowAny]
+
     def get(self, request, *args, **kwargs):
-        code = request.GET.get('code')
-        frontend_url = f"http://localhost:5173?code={code}"
+        """✅ 카카오 로그인 후 프론트엔드로 리다이렉트"""
+        code = request.GET.get("code")
+        frontend_url = f"http://localhost:5173/login/?code={code}"
         return redirect(frontend_url)
 
     def post(self, request, *args, **kwargs):
         """✅ 프론트에서 받은 인가 코드로 카카오에 액세스 토큰 요청"""
-        code = request.data.get("code")
-        logger.info(f"code: {code}")
-        if not code:
-            return Response({"detail": "인가 코드가 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = KakaoAuthCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        auth_data = serializer.save()
 
-        # ✅ 카카오에서 액세스 토큰 요청
-        access_token = self._get_kakao_access_token(code)
-        if not access_token:
-            return Response({"detail": "카카오 액세스 토큰 요청 실패"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # ✅ 액세스 토큰을 이용해 사용자 정보 가져오기
-        user = self._get_or_create_user(access_token)
-
-        # ✅ JWT 토큰 발급
-        refresh = RefreshToken.for_user(user)
-        access_token = str(refresh.access_token)
-        refresh_token = str(refresh)
+        # ✅ 유저가 새로 생성된 경우 201 코드 반환
+        user_created = auth_data["user_created"]
+        status_code = status.HTTP_201_CREATED if user_created else status.HTTP_200_OK
 
         # ✅ 응답 객체 생성
-        response = Response({
-            "access_token": access_token,
-            "user": UserSerializer(user).data
-        }, status=status.HTTP_200_OK)
+        if status_code != status.HTTP_200_OK:
+            response = Response(
+                {
+                    "access_token": auth_data["access_token"],
+                    "user": auth_data["user"],
+                },
+                status=status_code,
+            )
+        user_name = Member.objects.first().name
+
+        response = Response(
+            {
+                "access_token": auth_data["access_token"],
+                "user": {
+                    "id":auth_data["user"]["id"],  # 기존 user 정보
+                    "user_name": user_name,  # 추가된 member 정보
+                },
+            },
+            status=status_code,
+        )
 
         # ✅ 리프레시 토큰을 HttpOnly 쿠키로 설정
         response.set_cookie(
             key="refresh_token",
-            value=refresh_token,
+            value=auth_data["refresh_token"],
             httponly=True,  # JavaScript에서 접근 불가 (보안 강화)
             secure=True,  # HTTPS에서만 전송 (로컬 개발 시 False)
             samesite="Lax",  # CORS 보안 설정
@@ -93,27 +105,14 @@ class KakaoLoginCallbackView(APIView):
         kakao_id = user_data.get("id")
         email = user_data.get("kakao_account", {}).get("email", None)
 
-        if not kakao_id:
+        if not kakao_id or not email:
             raise ValueError("카카오 사용자 정보를 가져올 수 없습니다.")
 
-        # ✅ 기존 social_kakao_id가 있는 유저 확인
-        user = User.objects.filter(social_kakao_id=kakao_id).first()
-        if user:
-            return user
+        # ✅ SocialLoginSerializer를 활용하여 유저 생성 또는 업데이트
+        serializer = SocialLoginSerializer(data={"email": email})
+        serializer.is_valid(raise_exception=True)
 
-        # ✅ 기존 이메일이 있는 유저 확인 후 social_kakao_id 업데이트
-        user = User.objects.filter(email=email).first()
-        if user:
-            user.social_kakao_id = kakao_id
-            user.save()
-            return user
-
-        # ✅ 새로운 유저 생성
-        user = User.objects.create(
-            email=email,
-            social_kakao_id=kakao_id,
-            is_active=True  # 기본 활성화
-        )
+        user = serializer.save(social_kakao_id=kakao_id)
         return user
 
 
