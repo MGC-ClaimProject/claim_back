@@ -1,8 +1,7 @@
-from email._header_value_parser import Section
 
 from members.models import Member, Security
 from rest_framework import serializers
-from users.models import User
+
 
 
 class MemberSerializer(serializers.ModelSerializer):
@@ -11,7 +10,7 @@ class MemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = Member
         fields = "__all__"
-        read_only_fields = ("id","user")
+        read_only_fields = ("user",)
 
 
 
