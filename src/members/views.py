@@ -20,9 +20,12 @@ class MemberListView(ListCreateAPIView):
     serializer_class = MemberSerializer
     permission_classes = (IsAuthenticated,)
 
+
     def get_queryset(self):
         """로그인한 사용자의 멤버들만 반환"""
-        return Member.objects.filter(user=self.request.user)
+
+        return Member.objects.filter(user=self.request.user).order_by("id")
+
 
     def perform_create(self, serializer):
         """멤버 생성 시 로그인한 사용자와 연결"""

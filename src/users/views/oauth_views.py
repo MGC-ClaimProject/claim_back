@@ -41,18 +41,9 @@ class KakaoLoginCallbackView(APIView):
         # ✅ 유저가 새로 생성된 경우 201 코드 반환
         user_created = auth_data["user_created"]
         status_code = status.HTTP_201_CREATED if user_created else status.HTTP_200_OK
-
-        # ✅ 응답 객체 생성
-        if status_code != status.HTTP_200_OK:
-            response = Response(
-                {
-                    "access_token": auth_data["access_token"],
-                    "user": auth_data["user"],
-                },
-                status=status_code,
-            )
         user_name = Member.objects.first().name
 
+        # ✅ 응답 객체 생성
         response = Response(
             {
                 "access_token": auth_data["access_token"],

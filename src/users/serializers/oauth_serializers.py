@@ -6,6 +6,8 @@ from rest_framework import serializers
 from rest_framework_simplejwt.token_blacklist.models import (BlacklistedToken,
                                                              OutstandingToken)
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from members.models import Member
 from users.models import User
 
 
@@ -188,22 +190,55 @@ class KakaoAuthCodeSerializer(serializers.Serializer):
 
         kakao_id = user_data.get("id")
         email = user_data.get("kakao_account", {}).get("email", None)
+        name = user_data.get("kakao_account", {}).get("name", None)
+        phone = user_data.get("kakao_account", {}).get("phone_number", "").replace("+82 ", "0")  # 한국 번호 변환
+        gender = user_data.get("kakao_account", {}).get("gender", None)  # male, female
+        birth = user_data.get("kakao_account", {}).get("birthday", None)  # MMDD 형태
+
+        # ✅ 성별 변환 (카카오: male/female → 시스템: Male/Female)
+        gender_mapping = {"male": "Male", "female": "Female"}
+        gender = gender_mapping.get(gender, "Other")
+
+        # ✅ 생년월일 변환 (YYYY-MM-DD 형식)
+        birth_year = user_data.get("kakao_account", {}).get("birthyear", None)
+        if birth_year and birth:
+            birth = f"{birth_year}-{birth[:2]}-{birth[2:]}"  # "YYYY-MM-DD" 형식
+        else:
+            birth = None  # 생년월일이 없을 경우
 
         if not kakao_id or not email:
             raise BadRequestException("카카오 사용자 정보를 가져올 수 없습니다.", code="KAKAO_USER_INFO_ERROR")
 
-        return kakao_id, email
+        return {
+            "kakao_id": kakao_id,
+            "email": email,
+            "name": name,
+            "phone": phone,
+            "gender": gender,
+            "birth": birth,
+        }
 
-    def get_or_create_user(self, kakao_id, email):
+    def get_or_create_user(self, email):
         """✅ 기존 유저 확인 및 생성"""
         user, created = User.objects.get_or_create(email=email, defaults={"is_active": True})
-
-        # ✅ 기존 유저일 경우 social_kakao_id 업데이트
-        if not created and not user.social_kakao_id:
-            user.social_kakao_id = kakao_id
-            user.save()
-
         return user, created
+
+    def create_member(self, user, kakao_data):
+        # `user` 값으로 기존 Member 객체 조회
+        member = Member.objects.filter(user=user).first()
+
+        # 존재하지 않는 경우 새로 생성
+        if not member:
+            member = Member.objects.create(
+                user=user,
+                name=kakao_data.get("name", ""),
+                phone=kakao_data.get("phone", ""),
+                birth=kakao_data.get("birth", ""),
+                gender=kakao_data.get("gender", "unknown"),
+                relation="Self",
+            )
+
+        return member
 
     def create_tokens(self, user):
         """✅ JWT 토큰 발급"""
@@ -221,17 +256,28 @@ class KakaoAuthCodeSerializer(serializers.Serializer):
         access_token = self.exchange_code_for_access_token(code)
 
         # 2️⃣ 사용자 정보 가져오기
-        kakao_id, email = self.get_kakao_user_info(access_token)
+        kakao_data = self.get_kakao_user_info(access_token)
 
         # 3️⃣ 기존 사용자 조회 및 생성
-        user, user_created = self.get_or_create_user(kakao_id, email)
+        user, user_created = self.get_or_create_user(kakao_data["email"])
 
-        # 4️⃣ JWT 토큰 발급
+        # 4️⃣ Member 생성 또는 업데이트
+        member = self.create_member(user, kakao_data)
+
+        # 5️⃣ JWT 토큰 발급
         tokens = self.create_tokens(user)
 
         return {
             "access_token": tokens["access_token"],
             "refresh_token": tokens["refresh_token"],
             "user": UserSerializer(user).data,
+            "member": {
+                "id": member.id,
+                "name": member.name,
+                "phone": member.phone,
+                "birth": member.birth,
+                "gender": member.gender,
+                "relation": member.relation,
+            },
             "user_created": user_created,  # ✅ 유저 생성 여부 추가
         }
