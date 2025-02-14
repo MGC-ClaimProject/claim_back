@@ -1,17 +1,20 @@
 from common.constants.choices import (INSURANCE_TYPE_CHOICES,
-                                      POLICY_STATUS_CHOICES)
+                                      POLICY_STATUS_CHOICES, INSURANCE_COMPANY_CHOICES)
 from django.db import models
 from members.models import Member
-
 
 class Insurance(models.Model):
     member = models.ForeignKey(
         Member,
         on_delete=models.CASCADE,
         related_name="insurances",
-        verbose_name="가입자",
+        verbose_name="관리자",
     )
-    company = models.CharField(max_length=120, verbose_name="보험사")
+    company = models.CharField(
+        max_length=50,
+        choices=INSURANCE_COMPANY_CHOICES,  # ✅ 올바른 튜플 형태 적용
+        verbose_name="보험사"
+    )
     type = models.CharField(
         max_length=20, choices=INSURANCE_TYPE_CHOICES, verbose_name="보험 종류"
     )
@@ -27,9 +30,9 @@ class Insurance(models.Model):
     premium = models.DecimalField(
         max_digits=10, decimal_places=2, verbose_name="보험료"
     )
-    start_date = models.DateField(verbose_name="보험 시작일")
-    end_date = models.DateField(verbose_name="보험 종료일")
-    payment_term = models.IntegerField(verbose_name="납입 기간")
+    start_date = models.DateField(blank=True, null=True, verbose_name="보험 시작일")
+    end_date = models.DateField(blank=True, null=True, verbose_name="보험 종료일")
+    payment_term = models.IntegerField(blank=True, null=True, verbose_name="납입 기간")
     is_renewable = models.BooleanField(default=False, verbose_name="갱신 여부")
     status = models.CharField(
         max_length=20,

@@ -14,6 +14,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8000",
+    "http://192.168.219.179:8000",
+    "http://192.168.219.179:5173",
 ]
 
 
@@ -71,6 +73,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8000",
+    "http://192.168.219.179:8000",
+    "http://192.168.219.179:5173",
 ]
 
 # 모든 Origin 허용 (개발용)
@@ -91,13 +95,10 @@ CORS_ALLOW_ALL_ORIGINS = True
 # settings.py
 SESSION_ENGINE = "django.contrib.sessions.backends.db"  # ✅ 데이터베이스 기반 세션
 SESSION_COOKIE_SECURE = False  # ✅ HTTPS가 아닌 환경에서 세션 유지 가능하도록 설정 (로컬 개발 시)
-SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = "Lax"  # ✅ 프론트엔드와 백엔드 간 쿠키 유지
 
 
-
-
-CSRF_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SECURE = False  # HTTPS 환경에서는 True
 
 
@@ -187,7 +188,7 @@ REST_FRAMEWORK = {
     ],
 }
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=1),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "BLACKLIST_AFTER_ROTATION": True,
     "ROTATE_REFRESH_TOKENS": True,
@@ -210,7 +211,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 # 카카오 oauth
 KAKAO_FRONT_CALLBACK_URL = "http://localhost:5173/login/callback"
-KAKAO_CALLBACK_URL = "http://localhost:8000/api/v1/users/login/kakao/callback/"  # 카카오 콜백 URL, 카카오 인증후 리디렉션될 URL
+# KAKAO_CALLBACK_URL = "http://localhost:8000/api/v1/users/login/kakao/callback/"  # 카카오 콜백 URL, 카카오 인증후 리디렉션될 URL
+KAKAO_CALLBACK_URL = "http://192.168.219.179:8000/api/v1/users/login/kakao/callback/"  # 카카오 콜백 URL, 카카오 인증후 리디렉션될 URL
 KAKAO_LOGIN_URL = "https://kauth.kakao.com/oauth/authorize"  # 카카오 로그인 URL, 카카오 로그인 요청 URL,인증페이지로 이동
 KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token"  # 카카오 액세스 토큰 URL, 인증코드로 액세스토큰을 교환하는 URL,리프레쉬?
 KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me"  # 카카오 사용자 정보 URL, 카카오 사용자 정보를 가져오기 위한 URL
