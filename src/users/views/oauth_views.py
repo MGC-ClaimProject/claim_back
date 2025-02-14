@@ -5,14 +5,14 @@ from common.exceptions import UnauthorizedException
 from common.logging_config import logger
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.token_blacklist.models import (BlacklistedToken,
                                                              OutstandingToken)
 from django.conf import settings
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 
 from members.models import Member
 from users.models import User
@@ -29,7 +29,7 @@ class KakaoLoginCallbackView(APIView):
     def get(self, request, *args, **kwargs):
         """✅ 카카오 로그인 후 프론트엔드로 리다이렉트"""
         code = request.GET.get("code")
-        frontend_url = f"http://localhost:5173/login/?code={code}"
+        frontend_url = f"http://192.168.219.179:5173/login/?code={code}"
         return redirect(frontend_url)
 
     def post(self, request, *args, **kwargs):
@@ -41,7 +41,7 @@ class KakaoLoginCallbackView(APIView):
         # ✅ 유저가 새로 생성된 경우 201 코드 반환
         user_created = auth_data["user_created"]
         status_code = status.HTTP_201_CREATED if user_created else status.HTTP_200_OK
-        user_name = Member.objects.first().name
+        user_info = Member.objects.first()
 
         # ✅ 응답 객체 생성
         response = Response(
@@ -49,7 +49,8 @@ class KakaoLoginCallbackView(APIView):
                 "access_token": auth_data["access_token"],
                 "user": {
                     "id":auth_data["user"]["id"],  # 기존 user 정보
-                    "user_name": user_name,  # 추가된 member 정보
+                    "use_name": user_info.name,  # 추가된 member 정보
+                    "member_id": user_info.id,
                 },
             },
             status=status_code,
@@ -59,10 +60,10 @@ class KakaoLoginCallbackView(APIView):
         response.set_cookie(
             key="refresh_token",
             value=auth_data["refresh_token"],
-            httponly=True,  # JavaScript에서 접근 불가 (보안 강화)
-            secure=True,  # HTTPS에서만 전송 (로컬 개발 시 False)
-            samesite="Lax",  # CORS 보안 설정
-            max_age=7 * 24 * 60 * 60,  # 7일간 유효
+            httponly=False,
+            secure=False,
+            samesite="Lax",
+            max_age=7 * 24 * 60 * 60,  # ✅ 7일
         )
 
         return response
@@ -145,7 +146,7 @@ class RefreshAccessTokenAPIView(APIView):
 class LogoutView(APIView):
     """사용자 로그아웃 처리 View"""
 
-    permission_classes = [AllowAny]
+    permission_classes = (IsAuthenticated,)
 
     @extend_schema(
         tags=["Oauth"],
@@ -153,34 +154,33 @@ class LogoutView(APIView):
         responses={200: {"type": "object", "description": "로그아웃 성공"}},
     )
     def post(self, request, *args, **kwargs):
-        refresh_token = request.COOKIES.get("refresh_token")
-        if not refresh_token:
-            raise UnauthorizedException(
-                "리프레시 토큰이 누락되었습니다.", code="MISSING_REFRESH_TOKEN"
-            )
+        access_token = request.headers.get("Authorization")
+        if not access_token:
+            raise UnauthorizedException("액세스 토큰이 누락되었습니다.", code="MISSING_ACCESS_TOKEN")
 
+        # ✅ 액세스 토큰에서 사용자 ID 추출
         try:
-            token = RefreshToken(refresh_token)
+            access_token = access_token.split(" ")[1]  # "Bearer <token>"에서 토큰 부분만 추출
+            decoded_access_token = AccessToken(access_token)
+            user_id = decoded_access_token["user_id"]
+        except Exception as e:
+            logger.error(f"액세스 토큰 해독 실패: {e}")
+            raise UnauthorizedException("유효하지 않은 액세스 토큰입니다.", code="INVALID_ACCESS_TOKEN")
 
-            outstanding_token = OutstandingToken.objects.filter(
-                jti=token["jti"]
-            ).first()
-            if outstanding_token:
-                BlacklistedToken.objects.get_or_create(token=outstanding_token)
-                outstanding_token.delete()
-            else:
-                logger.warning(
-                    "해당 리프레시 토큰을 OutstandingToken에서 찾을 수 없습니다."
-                )
+        # ✅ 사용자와 연결된 리프레시 토큰 찾기
+        from django.utils.timezone import now
+        outstanding_tokens = OutstandingToken.objects.filter(user_id=user_id, expires_at__gt=now())
 
-        except TokenError:
-            logger.error("리프레시 토큰 블랙리스트 처리 중 오류 발생")
-            raise UnauthorizedException(
-                "유효하지 않은 리프레시 토큰입니다.", code="INVALID_REFRESH_TOKEN"
-            )
+        if outstanding_tokens.exists():
+            try:
+                for token in outstanding_tokens:
+                    BlacklistedToken.objects.get_or_create(token=token)
+                    token.delete()  # ✅ DB에서 삭제
+            except Exception as e:
+                logger.error(f"리프레시 토큰 블랙리스트 처리 중 오류 발생: {e}")
+                raise UnauthorizedException("리프레시 토큰 블랙리스트 처리 중 오류가 발생했습니다.", code="TOKEN_BLACKLIST_ERROR")
 
-        response = Response(
-            {"detail": "로그아웃에 성공했습니다."}, status=status.HTTP_200_OK
-        )
-        response.delete_cookie("refresh_token")
+        # ✅ 프론트 쿠키에서도 리프레시 토큰 삭제
+        response = Response({"detail": "로그아웃에 성공했습니다."}, status=status.HTTP_200_OK)
+
         return response

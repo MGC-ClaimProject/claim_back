@@ -204,7 +204,7 @@ class KakaoAuthCodeSerializer(serializers.Serializer):
         if birth_year and birth:
             birth = f"{birth_year}-{birth[:2]}-{birth[2:]}"  # "YYYY-MM-DD" 형식
         else:
-            birth = None  # 생년월일이 없을 경우
+            birth = datetime.today().strftime("%Y-%m-%d")  # ✅ 오늘 날짜 사용
 
         if not kakao_id or not email:
             raise BadRequestException("카카오 사용자 정보를 가져올 수 없습니다.", code="KAKAO_USER_INFO_ERROR")
