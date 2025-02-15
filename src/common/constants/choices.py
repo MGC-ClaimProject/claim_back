@@ -91,3 +91,22 @@ INSURANCE_COMPANY_CHOICES = [
     )),
 ]
 
+
+# ✅ 대한민국 은행 선택 옵션
+BANK_CHOICES = [
+    ("KB Kookmin Bank", "KB국민은행"),
+    ("Shinhan Bank", "신한은행"),
+    ("Woori Bank", "우리은행"),
+    ("Hana Bank", "하나은행"),
+    ("IBK Industrial Bank", "IBK기업은행"),
+    ("NH Nonghyup Bank", "NH농협은행"),
+    ("SC First Bank", "SC제일은행"),
+    ("Citibank Korea", "씨티은행"),
+    ("Daegu Bank", "대구은행"),
+    ("Busan Bank", "부산은행"),
+    ("Gwangju Bank", "광주은행"),
+    ("Jeonbuk Bank", "전북은행"),
+    ("Kyongnam Bank", "경남은행"),
+    ("Kakao Bank", "카카오뱅크"),
+    ("Toss Bank", "토스뱅크"),
+]

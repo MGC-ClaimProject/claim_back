@@ -44,6 +44,7 @@ class UserAPIView(RetrieveUpdateAPIView):
 class UserDeactivateAPIView(APIView):
     # permission_classes = [IsAuthenticated]  # 로그인된 사용자만 접근 가능
     permission_classes = [AllowAny]
+    serializer_class = UserSerializer
 
     def patch(self, request, *args, **kwargs):
         # 로그인한 사용자의 1번 멤버를 조회

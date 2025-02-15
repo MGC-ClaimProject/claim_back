@@ -16,6 +16,7 @@ Including another URLconf
 """
 
 from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import (SpectacularAPIView, SpectacularRedocView,
@@ -30,7 +31,7 @@ urlpatterns = [
     path(f"{base_url}/members/", include("members.urls")),
     path(f"{base_url}/insurances/", include("insurances.urls")),
     path(f"{base_url}/claims/", include("claims.urls")),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
     urlpatterns += [
