@@ -205,17 +205,10 @@ SPECTACULAR_SETTINGS = {
 }
 
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
 
 # 카카오 oauth
-KAKAO_FRONT_CALLBACK_URL = "http://localhost:5173/login/callback"
-# KAKAO_CALLBACK_URL = "http://localhost:8000/api/v1/users/login/kakao/callback/"  # 카카오 콜백 URL, 카카오 인증후 리디렉션될 URL
-KAKAO_CALLBACK_URL = "http://192.168.219.179:8000/api/v1/users/login/kakao/callback/"  # 카카오 콜백 URL, 카카오 인증후 리디렉션될 URL
+
 KAKAO_LOGIN_URL = "https://kauth.kakao.com/oauth/authorize"  # 카카오 로그인 URL, 카카오 로그인 요청 URL,인증페이지로 이동
 KAKAO_TOKEN_URL = "https://kauth.kakao.com/oauth/token"  # 카카오 액세스 토큰 URL, 인증코드로 액세스토큰을 교환하는 URL,리프레쉬?
 KAKAO_USER_INFO_URL = "https://kapi.kakao.com/v2/user/me"  # 카카오 사용자 정보 URL, 카카오 사용자 정보를 가져오기 위한 URL
 KAKAO_ACCESS_TOKEN_INFO_URL = "https://kapi.kakao.com/v1/user/access_token_info"  # 액세스 토큰 정보 확인 URL, 발급된 액세스 토큰의 유효성을 확인하기 위한 URL
-FRONTEND_LOGIN_REDIRECT_URL = "http://localhost:5173/login-success"
-FRONTEND_BASE_URL = "http://localhost:5173"

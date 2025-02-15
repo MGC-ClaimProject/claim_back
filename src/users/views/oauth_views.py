@@ -16,8 +16,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 
 from members.models import Member
 from users.models import User
-from users.serializers.oauth_serializers import SocialLoginSerializer, KakaoAuthCodeSerializer
-
+from users.serializers.oauth_serializers import SocialLoginSerializer, KakaoAuthCodeSerializer, RefreshTokenSerializer
 
 logger = logging.getLogger("custom_api_logger")
 
@@ -25,11 +24,12 @@ logger = logging.getLogger("custom_api_logger")
 class KakaoLoginCallbackView(APIView):
     """✅ 카카오 로그인 콜백 API"""
     permission_classes = [AllowAny]
+    serializer_class = KakaoAuthCodeSerializer
 
     def get(self, request, *args, **kwargs):
         """✅ 카카오 로그인 후 프론트엔드로 리다이렉트"""
         code = request.GET.get("code")
-        frontend_url = f"http://192.168.219.179:5173/login/?code={code}"
+        frontend_url = f"{settings.FRONTEND_CALLBACK_URL}{code}"
         return redirect(frontend_url)
 
     def post(self, request, *args, **kwargs):
@@ -111,7 +111,7 @@ class KakaoLoginCallbackView(APIView):
 @extend_schema(tags=["Oauth"])
 class RefreshAccessTokenAPIView(APIView):
     """리프레시 토큰을 이용한 Access Token 갱신 API View"""
-
+    serializer_class = RefreshTokenSerializer
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
@@ -145,8 +145,8 @@ class RefreshAccessTokenAPIView(APIView):
 
 class LogoutView(APIView):
     """사용자 로그아웃 처리 View"""
-
     permission_classes = (IsAuthenticated,)
+    serializer_class = SocialLoginSerializer
 
     @extend_schema(
         tags=["Oauth"],
