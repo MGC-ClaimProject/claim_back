@@ -27,7 +27,15 @@ class ClaimListUserView(ListAPIView):
     def get_queryset(self):
         user = self.request.user
         members = Member.objects.filter(user=user)
-        return Claim.objects.filter(member__in=members)
+        queryset = Claim.objects.filter(member__in=members)
+
+        # ✅ year 파라미터 추가
+        year = self.request.query_params.get("year")
+        if year and year != "ALL":
+            queryset = queryset.filter(incident_date__year=year)  # 🔹 연도별 필터링
+
+        return queryset
+
 
 
 # 🔹 특정 멤버의 청구 리스트 조회 및 새 청구 생성 (ClaimListCreateView)
@@ -128,10 +136,8 @@ class ClaimDetailDestroyView(RetrieveUpdateDestroyAPIView):
     serializer_class = ClaimSerializer
 
     def get_queryset(self):
-        """특정 멤버의 특정 청구 정보를 가져오기 위한 쿼리셋"""
-        member_id = self.kwargs.get("member_id")
-        claim_id = self.kwargs.get("claim_id")
-        return Claim.objects.filter(member__id=member_id, id=claim_id)
+        claim_id = self.kwargs.get("pk")
+        return Claim.objects.filter(id=claim_id)
 
     def update(self, request, *args, **kwargs):
         """특정 청구 정보 업데이트"""
