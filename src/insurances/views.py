@@ -50,8 +50,12 @@ class InsuranceDetailView(RetrieveUpdateDestroyAPIView):
     보험 상세 조회, 수정 및 삭제 API
     """
     serializer_class = InsuranceSerializer
-    queryset = Insurance.objects.all()
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        insurance_id = self.kwargs.get("pk")
+        return Insurance.objects.filter(id=insurance_id)
+
 
     def update(self, request, *args, **kwargs):
         """

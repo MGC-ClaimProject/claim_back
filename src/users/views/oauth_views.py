@@ -49,7 +49,7 @@ class KakaoLoginCallbackView(APIView):
                 "access_token": auth_data["access_token"],
                 "user": {
                     "id":auth_data["user"]["id"],  # 기존 user 정보
-                    "use_name": user_info.name,  # 추가된 member 정보
+                    "user_name": user_info.name,  # 추가된 member 정보
                     "member_id": user_info.id,
                 },
             },
