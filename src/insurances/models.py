@@ -1,7 +1,9 @@
-from common.constants.choices import (INSURANCE_TYPE_CHOICES,
-                                      POLICY_STATUS_CHOICES, INSURANCE_COMPANY_CHOICES)
+from common.constants.choices import (INSURANCE_COMPANY_CHOICES,
+                                      INSURANCE_TYPE_CHOICES,
+                                      POLICY_STATUS_CHOICES)
 from django.db import models
 from members.models import Member
+
 
 class Insurance(models.Model):
     member = models.ForeignKey(
@@ -13,7 +15,7 @@ class Insurance(models.Model):
     company = models.CharField(
         max_length=50,
         choices=INSURANCE_COMPANY_CHOICES,  # ✅ 올바른 튜플 형태 적용
-        verbose_name="보험사"
+        verbose_name="보험사",
     )
     type = models.CharField(
         max_length=20, choices=INSURANCE_TYPE_CHOICES, verbose_name="보험 종류"

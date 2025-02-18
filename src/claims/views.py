@@ -1,13 +1,14 @@
+from claims.models import AddDocument, Claim
+from claims.serializers import ClaimAddDocumentSerializer, ClaimSerializer
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from members.models import Member
 from rest_framework import status
-from rest_framework.generics import get_object_or_404, ListCreateAPIView, RetrieveUpdateDestroyAPIView, ListAPIView
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.generics import (ListAPIView, ListCreateAPIView,
+                                     RetrieveUpdateDestroyAPIView,
+                                     get_object_or_404)
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, extend_schema_view
-
-from claims.models import Claim, AddDocument
-from claims.serializers import ClaimSerializer, ClaimAddDocumentSerializer
-from members.models import Member
 from utils.fax_converter import convert_to_fax_tiff  # ✅ 팩스 변환 모듈 가져오기
 
 
@@ -17,7 +18,7 @@ from utils.fax_converter import convert_to_fax_tiff  # ✅ 팩스 변환 모듈 
         operation_id="user_claim_list",
         summary="내 멤버들의 청구 리스트",
         description="로그인한 사용자가 보유한 모든 멤버들의 보험 청구 내역을 조회합니다.",
-        responses={200: ClaimSerializer(many=True)}
+        responses={200: ClaimSerializer(many=True)},
     )
 )
 class ClaimListUserView(ListAPIView):
@@ -37,22 +38,21 @@ class ClaimListUserView(ListAPIView):
         return queryset
 
 
-
 # 🔹 특정 멤버의 청구 리스트 조회 및 새 청구 생성 (ClaimListCreateView)
 @extend_schema_view(
     get=extend_schema(
         operation_id="member_claim_list",
         summary="특정 멤버의 청구 리스트 조회",
         description="특정 멤버의 보험 청구 리스트를 조회합니다.",
-        responses={200: ClaimSerializer(many=True)}
+        responses={200: ClaimSerializer(many=True)},
     ),
     post=extend_schema(
         operation_id="create_member_claim",
         summary="특정 멤버의 청구 생성",
         description="특정 멤버에 대한 새로운 보험 청구를 생성합니다.",
         request=ClaimSerializer,
-        responses={201: ClaimSerializer}
-    )
+        responses={201: ClaimSerializer},
+    ),
 )
 class ClaimListCreateView(ListCreateAPIView):
     permission_classes = [IsAuthenticated]
@@ -69,8 +69,9 @@ class ClaimListCreateView(ListCreateAPIView):
 
         data = request.data.copy()
         data["member"] = member.id
-        bypass_duplicate_check = data.get("bypass_duplicate_check", False)  # ✅ KeyError 방지
-
+        bypass_duplicate_check = data.get(
+            "bypass_duplicate_check", False
+        )  # ✅ KeyError 방지
 
         # ✅ 중복 체크
         existing_claim = Claim.objects.filter(
@@ -101,35 +102,34 @@ class ClaimListCreateView(ListCreateAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-
 # 🔹 특정 청구 조회, 수정, 삭제 (ClaimDetailDestroyView)
 @extend_schema_view(
     get=extend_schema(
         operation_id="get_claim_detail",
         summary="보험 청구 상세 조회",
         description="특정 보험 청구 정보를 조회합니다.",
-        responses={200: ClaimSerializer}
+        responses={200: ClaimSerializer},
     ),
     put=extend_schema(
         operation_id="update_claim_detail",
         summary="보험 청구 전체 업데이트",
         description="보험 청구 정보를 전체 업데이트합니다.",
         request=ClaimSerializer,
-        responses={200: ClaimSerializer}
+        responses={200: ClaimSerializer},
     ),
     patch=extend_schema(
         operation_id="partial_update_claim",
         summary="보험 청구 부분 업데이트",
         description="보험 청구 정보를 부분 업데이트합니다.",
         request=ClaimSerializer,
-        responses={200: ClaimSerializer}
+        responses={200: ClaimSerializer},
     ),
     delete=extend_schema(
         operation_id="delete_claim",
         summary="보험 청구 삭제",
         description="특정 보험 청구를 삭제합니다.",
-        responses={204: None}
-    )
+        responses={204: None},
+    ),
 )
 class ClaimDetailDestroyView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
@@ -155,20 +155,23 @@ class ClaimDetailDestroyView(RetrieveUpdateDestroyAPIView):
         """특정 청구 정보 삭제"""
         instance = self.get_object()
         instance.delete()
-        return Response({"message": "보험 청구가 삭제되었습니다."}, status=status.HTTP_204_NO_CONTENT)
-
+        return Response(
+            {"message": "보험 청구가 삭제되었습니다."},
+            status=status.HTTP_204_NO_CONTENT,
+        )
 
 
 class ClaimAddDocumentConvertFaxView(ListCreateAPIView):
     """
-    📌 특정 청구(Claim)의 여러 문서를 하나의 TIFF G3/G4 파일로 변환하여 저장하는 뷰
+    📌 특정 청구(Claim)의 문서를 TIFF로 변환하여 저장하며, 기존 문서는 유지
     """
+
     serializer_class = ClaimAddDocumentSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def get_queryset(self):
-        """ 특정 청구(Claim)에 저장된 문서 조회 """
+        """특정 청구(Claim)에 저장된 문서 조회"""
         claim_id = self.kwargs.get("claim_id")
         return AddDocument.objects.filter(claim_id=claim_id)
 
@@ -177,64 +180,67 @@ class ClaimAddDocumentConvertFaxView(ListCreateAPIView):
         claim = get_object_or_404(Claim, id=claim_id)
 
         uploaded_files = request.FILES.getlist("documents")
-
         if not uploaded_files:
-            return Response({"error": "📁 업로드할 파일을 선택해주세요."}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # ✅ 여러 개의 문서를 하나의 TIFF 파일로 변환
-            merged_tiff_file = convert_to_fax_tiff(uploaded_files)
-
-            # ✅ 기존 문서 삭제 (하나의 파일로 유지)
-            AddDocument.objects.filter(claim=claim).delete()
-
-            # ✅ 변환된 TIFF 파일을 `AddDocument`에 저장
-            document_instance = AddDocument.objects.create(claim=claim)
-            document_instance.document.save(f"{claim_id}_merged_fax.tiff", merged_tiff_file)
-
             return Response(
-                {
-                    "message": "📜 모든 문서가 하나의 TIFF 파일로 변환되어 저장되었습니다.",
-                    "document_url": document_instance.document.url,  # ✅ 문서 URL 반환
-                },
-                status=status.HTTP_201_CREATED,
+                {"error": "📁 업로드할 파일을 선택해주세요."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
+        try:
+            # ✅ 모든 문서를 TIFF로 변환하여 저장 (원본 문서 저장 생략)
+            merged_tiff_file = convert_to_fax_tiff(uploaded_files)
+
+            # ✅ TIFF 문서만 저장
+            tiff_document = AddDocument.objects.create(claim=claim, page_count=1)
+            tiff_document.document.save(f"{claim_id}_merged_fax.tiff", merged_tiff_file)
+
+            serializer = ClaimAddDocumentSerializer(tiff_document)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def list(self, request, *args, **kwargs):
-        """ ✅ 특정 청구(Claim)의 기존 문서 목록을 반환 """
+        """✅ 특정 청구(Claim)의 기존 문서 목록을 반환"""
         claim_id = self.kwargs.get("claim_id")
         documents = AddDocument.objects.filter(claim_id=claim_id)
 
         if not documents.exists():
-            return Response({"message": "📂 저장된 문서가 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"message": "📂 저장된 문서가 없습니다."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        document_urls = [{"id": doc.id, "document_url": doc.document.url} for doc in documents]
+        document_data = [
+            {
+                "id": doc.id,
+                "document_url": doc.document.url,
+                "page_count": doc.page_count,
+            }
+            for doc in documents
+        ]
 
-        return Response({"documents": document_urls}, status=status.HTTP_200_OK)
-
-
-
-
+        return Response({"documents": document_data}, status=status.HTTP_200_OK)
 
 
 class ClaimAddDocumentEditFaxView(RetrieveUpdateDestroyAPIView):
     """
     특정 청구(Claim)에 속한 문서 수정 및 삭제 뷰
     """
+
     serializer_class = ClaimAddDocumentSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]  # 파일 업로드 지원
 
     def get_queryset(self):
-        """ 특정 청구(Claim)에 속한 특정 문서를 조회 """
+        """특정 청구(Claim)에 속한 특정 문서를 조회"""
         claim_id = self.kwargs.get("claim_id")
         return AddDocument.objects.filter(claim_id=claim_id)
 
     def perform_update(self, serializer):
-        """ 문서 업데이트 (수정 가능, TIFF 변환 옵션 추가) """
+        """문서 업데이트 (수정 가능, TIFF 변환 옵션 추가)"""
         instance = self.get_object()
 
         # ✅ 요청에서 팩스 변환 여부 확인 (기본값: False)
@@ -242,7 +248,10 @@ class ClaimAddDocumentEditFaxView(RetrieveUpdateDestroyAPIView):
 
         uploaded_file = self.request.FILES.get("document")
         if not uploaded_file:
-            return Response({"error": "업로드할 파일이 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "업로드할 파일이 필요합니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             # ✅ 사용자가 TIFF 변환을 원하면 변환 후 저장
@@ -256,13 +265,20 @@ class ClaimAddDocumentEditFaxView(RetrieveUpdateDestroyAPIView):
                 instance.document = uploaded_file
 
             instance.save()
-            return Response({"message": "📄 문서가 성공적으로 업데이트되었습니다."}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "📄 문서가 성공적으로 업데이트되었습니다."},
+                status=status.HTTP_200_OK,
+            )
 
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def perform_destroy(self, instance):
-        """ 문서 삭제 """
+        """문서 삭제"""
         instance.document.delete()  # 기존 파일 삭제
         instance.delete()
-        return Response({"detail": "문서가 삭제되었습니다."}, status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {"detail": "문서가 삭제되었습니다."}, status=status.HTTP_204_NO_CONTENT
+        )

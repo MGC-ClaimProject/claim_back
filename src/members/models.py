@@ -20,7 +20,9 @@ class Member(models.Model):
     relation = models.CharField(
         max_length=30, choices=RELATION_CHOICES, verbose_name="관계"
     )
-    is_ad_agreed = models.BooleanField(default=False, verbose_name="광고성 정보 동의")  # ✅ 선택 동의 필드 추가
+    is_ad_agreed = models.BooleanField(
+        default=False, verbose_name="광고성 정보 동의"
+    )  # ✅ 선택 동의 필드 추가
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="생성일")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="수정일")
 

@@ -1,7 +1,5 @@
-
 from members.models import Member, Security
 from rest_framework import serializers
-
 
 
 class MemberSerializer(serializers.ModelSerializer):
@@ -11,7 +9,6 @@ class MemberSerializer(serializers.ModelSerializer):
         model = Member
         fields = "__all__"
         read_only_fields = ("user",)
-
 
 
 class SecuritySerializer(serializers.ModelSerializer):
