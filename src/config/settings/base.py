@@ -94,14 +94,14 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 # settings.py
 SESSION_ENGINE = "django.contrib.sessions.backends.db"  # ✅ 데이터베이스 기반 세션
-SESSION_COOKIE_SECURE = False  # ✅ HTTPS가 아닌 환경에서 세션 유지 가능하도록 설정 (로컬 개발 시)
+SESSION_COOKIE_SECURE = (
+    False  # ✅ HTTPS가 아닌 환경에서 세션 유지 가능하도록 설정 (로컬 개발 시)
+)
 SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SAMESITE = "Lax"  # ✅ 프론트엔드와 백엔드 간 쿠키 유지
 
 
 CSRF_COOKIE_SECURE = False  # HTTPS 환경에서는 True
-
-
 
 
 ROOT_URLCONF = "config.urls"
@@ -203,7 +203,6 @@ SPECTACULAR_SETTINGS = {
         "rest_framework.permissions.AllowAny"
     ],  # 인증된 사용자만 접근 가능
 }
-
 
 
 # 카카오 oauth

@@ -1,11 +1,12 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from members.models import Member, Security
 from members.serializers import MemberSerializer, SecuritySerializer
+from rest_framework import status
 from rest_framework.generics import (CreateAPIView, ListCreateAPIView,
                                      RetrieveUpdateDestroyAPIView)
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
+
 
 @extend_schema(tags=["Members"])
 @extend_schema_view(
@@ -20,12 +21,10 @@ class MemberListView(ListCreateAPIView):
     serializer_class = MemberSerializer
     permission_classes = (IsAuthenticated,)
 
-
     def get_queryset(self):
         """로그인한 사용자의 멤버들만 반환"""
 
         return Member.objects.filter(user=self.request.user).order_by("id")
-
 
     def perform_create(self, serializer):
         """멤버 생성 시 로그인한 사용자와 연결"""
@@ -43,6 +42,7 @@ class MemberListView(ListCreateAPIView):
             "member": serializer.data,
         }
         return Response(response_data, status=status.HTTP_201_CREATED)
+
 
 @extend_schema(tags=["Members"])
 @extend_schema_view(

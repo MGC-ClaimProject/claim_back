@@ -1,20 +1,16 @@
 from datetime import datetime, timezone
 
+import requests
 from common.exceptions import BadRequestException
 from common.logging_config import logger
+from django.conf import settings
+from members.models import Member
 from rest_framework import serializers
 from rest_framework_simplejwt.token_blacklist.models import (BlacklistedToken,
                                                              OutstandingToken)
 from rest_framework_simplejwt.tokens import RefreshToken
-
-from members.models import Member
 from users.models import User
-
-
-import requests
-from django.conf import settings
 from users.serializers.user_serializers import UserSerializer
-
 
 
 class AccessTokenSerializer(serializers.Serializer):
@@ -97,10 +93,6 @@ class RefreshTokenSerializer(serializers.Serializer):
         outstanding_tokens.delete()
 
 
-
-
-
-
 class SocialLoginSerializer(serializers.Serializer):
     """소셜 로그인 공통 시리얼라이저"""
 
@@ -147,7 +139,6 @@ class SocialLoginSerializer(serializers.Serializer):
         outstanding_tokens.delete()
 
 
-
 class KakaoAuthCodeSerializer(serializers.Serializer):
     """✅ 카카오 로그인 인가 코드 요청을 처리하는 Serializer"""
 
@@ -174,7 +165,9 @@ class KakaoAuthCodeSerializer(serializers.Serializer):
         data = response.json()
 
         if "access_token" not in data:
-            raise BadRequestException("카카오 액세스 토큰 요청 실패", code="KAKAO_TOKEN_ERROR")
+            raise BadRequestException(
+                "카카오 액세스 토큰 요청 실패", code="KAKAO_TOKEN_ERROR"
+            )
 
         return data["access_token"]
 
@@ -191,7 +184,11 @@ class KakaoAuthCodeSerializer(serializers.Serializer):
         kakao_id = user_data.get("id")
         email = user_data.get("kakao_account", {}).get("email", None)
         name = user_data.get("kakao_account", {}).get("name", None)
-        phone = user_data.get("kakao_account", {}).get("phone_number", "").replace("+82 ", "0")  # 한국 번호 변환
+        phone = (
+            user_data.get("kakao_account", {})
+            .get("phone_number", "")
+            .replace("+82 ", "0")
+        )  # 한국 번호 변환
         gender = user_data.get("kakao_account", {}).get("gender", None)  # male, female
         birth = user_data.get("kakao_account", {}).get("birthday", None)  # MMDD 형태
 
@@ -207,7 +204,9 @@ class KakaoAuthCodeSerializer(serializers.Serializer):
             birth = datetime.today().strftime("%Y-%m-%d")  # ✅ 오늘 날짜 사용
 
         if not kakao_id or not email:
-            raise BadRequestException("카카오 사용자 정보를 가져올 수 없습니다.", code="KAKAO_USER_INFO_ERROR")
+            raise BadRequestException(
+                "카카오 사용자 정보를 가져올 수 없습니다.", code="KAKAO_USER_INFO_ERROR"
+            )
 
         return {
             "kakao_id": kakao_id,
@@ -220,7 +219,9 @@ class KakaoAuthCodeSerializer(serializers.Serializer):
 
     def get_or_create_user(self, email):
         """✅ 기존 유저 확인 및 생성"""
-        user, created = User.objects.get_or_create(email=email, defaults={"is_active": True})
+        user, created = User.objects.get_or_create(
+            email=email, defaults={"is_active": True}
+        )
         return user, created
 
     def create_member(self, user, kakao_data):
