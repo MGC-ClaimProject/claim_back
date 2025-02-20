@@ -17,7 +17,6 @@ from rest_framework_simplejwt.token_blacklist.models import (BlacklistedToken,
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from users.models import User
 from users.serializers.oauth_serializers import (KakaoAuthCodeSerializer,
-                                                 RefreshTokenSerializer,
                                                  SocialLoginSerializer)
 
 logger = logging.getLogger("custom_api_logger")
@@ -73,51 +72,11 @@ class KakaoLoginCallbackView(APIView):
 
         return response
 
-    def _get_kakao_access_token(self, code):
-        """✅ 카카오 API에서 액세스 토큰 요청"""
-        token_url = "https://kauth.kakao.com/oauth/token"
-        payload = {
-            "grant_type": "authorization_code",
-            "client_id": settings.KAKAO_CLIENT_ID,
-            "redirect_uri": settings.KAKAO_CALLBACK_URL,  # ✅ 백엔드 주소 사용
-            "code": code,
-        }
-
-        headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        response = requests.post(token_url, data=payload, headers=headers)
-        data = response.json()
-
-        return data.get("access_token")
-
-    def _get_or_create_user(self, access_token):
-        """✅ 카카오 API에서 사용자 정보 가져와 유저 생성 또는 조회"""
-        user_info_url = "https://kapi.kakao.com/v2/user/me"
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-        }
-        response = requests.get(user_info_url, headers=headers)
-        user_data = response.json()
-
-        kakao_id = user_data.get("id")
-        email = user_data.get("kakao_account", {}).get("email", None)
-
-        if not kakao_id or not email:
-            raise ValueError("카카오 사용자 정보를 가져올 수 없습니다.")
-
-        # ✅ SocialLoginSerializer를 활용하여 유저 생성 또는 업데이트
-        serializer = SocialLoginSerializer(data={"email": email})
-        serializer.is_valid(raise_exception=True)
-
-        user = serializer.save(social_kakao_id=kakao_id)
-        return user
-
 
 @extend_schema(tags=["Oauth"])
 class RefreshAccessTokenAPIView(APIView):
     """리프레시 토큰을 이용한 Access Token 갱신 API View"""
 
-    serializer_class = RefreshTokenSerializer
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
@@ -203,5 +162,5 @@ class LogoutView(APIView):
         response = Response(
             {"detail": "로그아웃에 성공했습니다."}, status=status.HTTP_200_OK
         )
-
+        response.delete_cookie("refresh_token", path="/", domain=settings.SESSION_COOKIE_DOMAIN)
         return response

@@ -1,3 +1,5 @@
+from rest_framework.views import APIView
+
 from claims.models import AddDocument, Claim
 from claims.serializers import ClaimAddDocumentSerializer, ClaimSerializer
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -281,4 +283,28 @@ class ClaimAddDocumentEditFaxView(RetrieveUpdateDestroyAPIView):
         instance.delete()
         return Response(
             {"detail": "문서가 삭제되었습니다."}, status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class ClaimSendView(APIView):
+    """📨 청구서 발송 API"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, claim_id, *args, **kwargs):
+        """✅ 특정 청구를 발송하는 엔드포인트"""
+        claim = get_object_or_404(Claim, id=claim_id)
+
+        # ✅ claim_status를 "sent"로 변경
+        claim.claim_status = "sent"
+        claim.save(update_fields=["claim_status"])  # 변경된 필드만 저장
+
+        # ✅ claim 정보 직렬화
+        serialized_claim = ClaimSerializer(claim).data
+
+        return Response(
+            {
+                "message": "발송완료 되었습니다.",
+            },
+            status=status.HTTP_200_OK,
         )

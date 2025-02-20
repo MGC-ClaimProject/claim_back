@@ -1,6 +1,6 @@
 from claims.views import (ClaimAddDocumentConvertFaxView,
                           ClaimAddDocumentEditFaxView, ClaimDetailDestroyView,
-                          ClaimListCreateView, ClaimListUserView)
+                          ClaimListCreateView, ClaimListUserView, ClaimSendView)
 from django.urls import path
 
 app_name = "claims"
@@ -16,8 +16,13 @@ urlpatterns = [
         name="claim-add-document",
     ),
     path(
-        "<int:claim_id>/documents/<int:pk>",
+        "<int:claim_id>/documents/<int:pk>/",
         ClaimAddDocumentEditFaxView.as_view(),
         name="claim-document-edit",
+    ),
+    path(
+        "<int:claim_id>/send/",
+        ClaimSendView.as_view(),
+        name="claim-send",
     ),
 ]
