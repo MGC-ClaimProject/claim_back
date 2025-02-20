@@ -12,7 +12,7 @@ SECRET_KEY = ENV.get(
     "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()?", k=50)),
 )
 
-
+ROOT_URLCONF = "config.urls"
 # Database
 DATABASES = {
     "default": {

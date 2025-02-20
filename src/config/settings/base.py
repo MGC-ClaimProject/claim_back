@@ -8,7 +8,7 @@ ALLOWED_HOSTS = [
     # "localhost",
     # "127.0.0.1",
     # "default-oz-collabo-servi-18d66-100596032-ce8f2faf2e3d.kr.lb.naverncp.com",
-    "*",
+    "*", "localhost", "backend", "django_app",
 ]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
@@ -102,6 +102,7 @@ SESSION_COOKIE_SAMESITE = "Lax"  # ✅ 프론트엔드와 백엔드 간 쿠키 �
 
 
 CSRF_COOKIE_SECURE = False  # HTTPS 환경에서는 True
+
 
 
 ROOT_URLCONF = "config.urls"
