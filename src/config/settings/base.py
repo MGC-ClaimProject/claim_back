@@ -5,10 +5,11 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 ALLOWED_HOSTS = [
-    # "localhost",
-    # "127.0.0.1",
-    # "default-oz-collabo-servi-18d66-100596032-ce8f2faf2e3d.kr.lb.naverncp.com",
-    "*", "localhost", "backend", "django_app",
+    "localhost",
+    "127.0.0.1",
+    "backend",
+    "django_app",
+    "175.45.205.3",
 ]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
@@ -16,6 +17,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
     "http://192.168.219.179:8000",
     "http://192.168.219.179:5173",
+    "http://175.45.205.3",
+    "https://175.45.205.3",
 ]
 
 
@@ -70,11 +73,14 @@ MIDDLEWARE = [
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000"
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:8000",
     "http://192.168.219.179:8000",
     "http://192.168.219.179:5173",
+    "http://175.45.205.3",
+    "https://175.45.205.3",
 ]
 
 # 모든 Origin 허용 (개발용)
